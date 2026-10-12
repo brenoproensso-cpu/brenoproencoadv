@@ -3,9 +3,23 @@
 // Deploy com verificação de JWT desligada (o site não tem login); a proteção é feita aqui.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const ORIGENS = (Deno.env.get('ALLOWED_ORIGINS') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-const SAL = Deno.env.get('IP_SALT') ?? 'troque-este-sal';
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+
+// Configurações: segredo da função (se existir) ou tabela protegida public.ajustes (cache de 60 s)
+let cache: { t: number; v: Record<string, string> } = { t: 0, v: {} };
+async function ajustes() {
+  if (Date.now() - cache.t > 60_000) {
+    const { data } = await db.from('ajustes').select('chave, valor');
+    const v: Record<string, string> = {};
+    (data ?? []).forEach((r: { chave: string; valor: string }) => { v[r.chave] = r.valor; });
+    cache = { t: Date.now(), v };
+  }
+  const get = (k: string) => Deno.env.get(k) ?? cache.v[k] ?? '';
+  return {
+    origens: get('ALLOWED_ORIGINS').split(',').map((s) => s.trim()).filter(Boolean),
+    sal: get('IP_SALT') || 'troque-este-sal',
+  };
+}
 
 // Texto do consentimento guardado com o lead (fonte: servidor, não o navegador)
 const CONSENT_VERSAO = '2026-10-12';
@@ -17,7 +31,7 @@ const LIMITE = { lead: 5, evento: 240 }; // por IP a cada 10 minutos
 
 const txt = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : null) || null;
 
-function cors(origin: string | null) {
+function cors(origin: string | null, ORIGENS: string[]) {
   const ok = origin && (ORIGENS.length === 0 || ORIGENS.includes(origin));
   return {
     ok: !!ok,
@@ -54,7 +68,7 @@ function entradas(v: unknown) {
   return r;
 }
 
-async function hashIp(req: Request) {
+async function hashIp(req: Request, SAL: string) {
   const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'sem-ip';
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(SAL + ip));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -70,7 +84,8 @@ async function dentroDoLimite(ip: string, tipo: 'lead' | 'evento') {
 }
 
 Deno.serve(async (req) => {
-  const c = cors(req.headers.get('origin'));
+  const cfg = await ajustes();
+  const c = cors(req.headers.get('origin'), cfg.origens);
   if (req.method === 'OPTIONS') return new Response(null, { status: c.ok ? 204 : 403, headers: c.headers });
   if (req.method !== 'POST' || !c.ok) return new Response(null, { status: 403, headers: c.headers });
 
@@ -83,7 +98,7 @@ Deno.serve(async (req) => {
   if (!TIPOS.has(tipo)) return new Response(null, { status: 400, headers: c.headers });
   if (b.site) return new Response(null, { status: 204, headers: c.headers }); // armadilha anti-robô
 
-  const ip = await hashIp(req);
+  const ip = await hashIp(req, cfg.sal);
   if (!(await dentroDoLimite(ip, tipo === 'lead' ? 'lead' : 'evento'))) return new Response(null, { status: 429, headers: c.headers });
 
   const calc = txt(b.calculadora, 20);

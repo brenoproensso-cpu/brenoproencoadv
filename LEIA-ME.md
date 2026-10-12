@@ -18,7 +18,9 @@ Um só login, o mesmo e-mail e senha cadastrados no Supabase, para três abas:
 **Configuração (uma vez)**
 1. Rode `supabase/instalar-artigos.sql` inteiro no SQL Editor.
 2. No Netlify: **Site configuration → Build & deploy → Build hooks → Add build hook**, com o nome `Painel` e a branch `main`. Copie a URL.
-3. No Supabase, em **Edge Functions → Secrets**, crie `NETLIFY_BUILD_HOOK` com essa URL.
+3. Grave a URL na tabela protegida `ajustes` pelo SQL Editor (ou como segredo `NETLIFY_BUILD_HOOK` em Edge Functions → Secrets):
+   `insert into ajustes (chave, valor) values ('NETLIFY_BUILD_HOOK', 'URL-DO-HOOK') on conflict (chave) do update set valor = excluded.valor;`
+   Faça o mesmo para `ALLOWED_ORIGINS` (endereços do site, separados por vírgula) e `IP_SALT` (texto aleatório longo). A tabela `ajustes` não pode ser lida pelo público nem pelo painel, só pelas funções.
 
 ## Modo offline
 Sem Supabase configurado (ou com `ARTIGOS_OFFLINE=1`), o build usa os arquivos `.md` de `conteudo/artigos/`, que guardam uma cópia dos artigos iniciais.

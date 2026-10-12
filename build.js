@@ -725,6 +725,22 @@ fs.writeFileSync(path.join(out, 'sobre.html'), paginaSobre());
 fs.writeFileSync(path.join(out, 'politica-de-privacidade.html'), paginaPolitica());
 fs.writeFileSync(path.join(out, 'termos-de-uso.html'), paginaTermos());
 ARTIGOS.forEach(a => fs.writeFileSync(path.join(out, 'artigo-' + a.slug + '.html'), paginaArtigo(a)));
+// Links curtos de divulgação: cada um já leva a marcação de origem (UTM)
+const LINKS_CURTOS = [
+  ['/ig', '/?utm_source=instagram&utm_medium=bio'],
+  ['/stories', '/?utm_source=instagram&utm_medium=stories'],
+  ['/zap', '/?utm_source=whatsapp&utm_medium=mensagem'],
+  ['/status', '/?utm_source=whatsapp&utm_medium=status'],
+  ['/qr', '/?utm_source=qrcode&utm_medium=impresso'],
+  ['/cartao', '/?utm_source=cartao&utm_medium=impresso'],
+  ['/fb', '/?utm_source=facebook&utm_medium=post'],
+  ['/yt', '/?utm_source=youtube&utm_medium=video'],
+  ['/email', '/?utm_source=email&utm_medium=assinatura'],
+  ['/bpc', '/bpc-loas?utm_source=instagram&utm_medium=post'],
+  ['/aux', '/auxilio-doenca?utm_source=instagram&utm_medium=post'],
+  ['/apos', '/simulador-de-aposentadoria?utm_source=instagram&utm_medium=post'],
+];
+fs.writeFileSync(path.join(out, '_redirects'), LINKS_CURTOS.map(([de, para]) => `${de}  ${para}  302`).join('\n') + '\n');
 const urls = ['index.html', 'sobre.html', 'politica-de-privacidade.html', 'termos-de-uso.html'].concat(PAGES.map(p => p.slug + '.html'), ['artigos.html'], ARTIGOS.map(a => 'artigo-' + a.slug + '.html'));
 if (CFG.dominio) {
   const d = CFG.dominio.replace(/\/$/, '');

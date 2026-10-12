@@ -74,3 +74,21 @@ Os textos evitam promessa de resultado e oferta de gratuidade (Provimento 205/20
 5. No SQL Editor: `insert into admins (email) values ('seu-email@exemplo.com');`
 6. Em `assets/config.js`, preencha `registrarUrl`, `supabaseUrl` e `supabaseAnonKey`.
 7. Painel: `seusite.com.br/admin`.
+
+## Links curtos de divulgação
+Use estes endereços em vez de colar UTM. Cada um leva para o site já marcando a origem no painel:
+
+| Onde divulgar | Link |
+|---|---|
+| Bio do Instagram | `brenoproencoadv.netlify.app/ig` |
+| Stories | `/stories` |
+| Mensagem no WhatsApp | `/zap` |
+| Status do WhatsApp | `/status` |
+| QR code impresso | `/qr` |
+| Cartão de visita | `/cartao` |
+| Facebook | `/fb` |
+| YouTube | `/yt` |
+| Assinatura de e-mail | `/email` |
+| Post sobre BPC, auxílio-doença ou aposentadoria | `/bpc`, `/aux`, `/apos` |
+
+Para criar outro, acrescente uma linha na lista `LINKS_CURTOS` do `build.js`.

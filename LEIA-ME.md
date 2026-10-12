@@ -7,24 +7,21 @@ Site estático (HTML, CSS e JavaScript puros, sem dependências). Funciona em qu
 - Na primeira vez, rode `npm install`. Ele instala dois pacotes, usados para ler os artigos em Markdown.
 - O Netlify faz isso sozinho a cada alteração, conforme o arquivo `netlify.toml`.
 
-## Publicar com o painel de artigos (GitHub + Netlify)
-1. **GitHub:** crie um repositório (pode ser privado) e envie esta pasta inteira para ele. `node_modules/` e `dist/` ficam de fora pelo `.gitignore`.
-2. **Netlify:** em app.netlify.com, **Add new site → Import an existing project → GitHub** e escolha o repositório. O comando e a pasta de publicação já vêm do `netlify.toml`. Clique em **Deploy**.
-3. **Login do painel (uma vez só):**
-   - No GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App**. *Homepage URL*: o endereço do site. *Authorization callback URL*: `https://api.netlify.com/auth/done`. Gere o *Client secret*.
-   - No Netlify: **Site configuration → Access & security → OAuth → Install provider → GitHub**, e cole o *Client ID* e o *Client secret*.
-4. O repositório já está configurado em `admin/config.yml` (`brenoproensso-cpu/brenoproencoadv`).
-5. Acesse `seusite.com.br/admin`, clique em **Entrar com GitHub** e pronto.
+## Painel único (/admin)
+Um só login, o mesmo e-mail e senha cadastrados no Supabase, para três abas:
+- **Estatísticas:** visitas, cálculos, origens, aparelhos e conversão.
+- **Leads:** situação, próximo contato, anotações, exportar CSV e **Excluir dados**, para atender pedidos de exclusão pela LGPD.
+- **Artigos:** criar, editar com prévia, salvar rascunho, publicar, tirar do ar e excluir. Rascunhos feitos pela IA aparecem com a etiqueta "IA" e uma caixa com os pontos a conferir.
 
-## Escrever um artigo pelo painel
-- **Artigos → Novo artigo.** Preencha título, descrição curta, data, calculadora relacionada e o texto.
-- Use **Título 2** para os subtítulos, e os botões do editor para listas e negrito.
-- Para valores que mudam todo ano, escreva `{{salario_minimo}}`, `{{teto}}`, `{{bpc_limite}}`, `{{bpc_limite_meio}}` ou `{{ano}}`. O site preenche com os números de `assets/config.js`.
-- Marque **Rascunho** para salvar sem publicar.
-- Ao clicar em **Publicar**, o Netlify gera o site de novo. Em cerca de 1 minuto o artigo aparece na página de artigos, na página inicial (os 3 mais recentes) e no sitemap.
+**Como a publicação funciona:** os artigos ficam na tabela `artigos` do Supabase. O público só lê os publicados; só admins escrevem. Ao clicar em **Publicar**, o painel chama a função `publicar`, que confere se você é admin e aciona o *build hook* do Netlify. O site é gerado de novo, lendo os artigos do Supabase, em cerca de 1 minuto.
 
-## Publicar sem o painel (alternativa)
-Rode `npm install && npm run build` e arraste a pasta `dist/` em **Sites → Add new site → Deploy manually**. Para um artigo novo, copie um arquivo `.md` de `conteudo/artigos/` e edite.
+**Configuração (uma vez)**
+1. Rode `supabase/instalar-artigos.sql` inteiro no SQL Editor.
+2. No Netlify: **Site configuration → Build & deploy → Build hooks → Add build hook**, com o nome `Painel` e a branch `main`. Copie a URL.
+3. No Supabase, em **Edge Functions → Secrets**, crie `NETLIFY_BUILD_HOOK` com essa URL.
+
+## Modo offline
+Sem Supabase configurado (ou com `ARTIGOS_OFFLINE=1`), o build usa os arquivos `.md` de `conteudo/artigos/`, que guardam uma cópia dos artigos iniciais.
 
 ## O que trocar antes de publicar
 Tudo está em `assets/config.js`:
@@ -39,8 +36,8 @@ Edite `build.js` e rode `node build.js` para regenerar as páginas. Os cálculos
 
 ## Estrutura
 - `build.js` — gera todas as páginas em `dist/`
-- `conteudo/artigos/` — artigos em Markdown (editados pelo painel)
-- `admin/` — painel de artigos (Decap CMS)
+- `conteudo/artigos/` — cópia offline dos artigos iniciais (os artigos de verdade ficam no Supabase)
+- `admin/` — painel único (estatísticas, leads e artigos)
 - Páginas geradas: `index.html` (início), `sobre.html`, `artigos.html`, `politica-de-privacidade.html`
 - `tempo-de-contribuicao.html`, `simulador-de-aposentadoria.html`, `valor-do-beneficio.html`, `bpc-loas.html`, `pensao-por-morte.html`, `auxilio-doenca.html`
 - `assets/` — `config.js`, `calc.js`, `app.js`, `style.css`
@@ -74,4 +71,4 @@ Os textos evitam promessa de resultado e oferta de gratuidade (Provimento 205/20
 4. Em **Authentication → Providers → Email**, desligue "Allow new users to sign up". Em **Authentication → Users → Add user**, crie o seu login com senha forte.
 5. No SQL Editor: `insert into admins (email) values ('seu-email@exemplo.com');`
 6. Em `assets/config.js`, preencha `registrarUrl`, `supabaseUrl` e `supabaseAnonKey`.
-7. Painel: `seusite.com.br/admin/estatisticas.html` (os artigos continuam em `/admin/`).
+7. Painel: `seusite.com.br/admin`.

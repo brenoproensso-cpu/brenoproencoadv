@@ -8,8 +8,8 @@ const SAL = Deno.env.get('IP_SALT') ?? 'troque-este-sal';
 const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
 // Texto do consentimento guardado com o lead (fonte: servidor, não o navegador)
-const CONSENT_VERSAO = '2026-10-11';
-const CONSENT_TEXTO = 'Autorizo o armazenamento dos meus dados e do cálculo realizado, que pode incluir informações de saúde ou deficiência, para que o advogado Breno Proenço retorne o contato, conforme a Política de Privacidade e a LGPD.';
+const CONSENT_VERSAO = '2026-10-12';
+const CONSENT_TEXTO = 'Li e aceito os Termos de Uso e a Política de Privacidade. Autorizo o armazenamento dos meus dados e do cálculo realizado, que pode incluir informações de saúde ou deficiência, para que o advogado Breno Proenço retorne o contato. Posso pedir a exclusão a qualquer momento pelo e-mail breno.proensso@gmail.com.';
 
 const CALCS = new Set(['tempo', 'simulador', 'valor', 'bpc', 'pensao', 'auxilio']);
 const TIPOS = new Set(['visita', 'calculo', 'whatsapp', 'lead']);

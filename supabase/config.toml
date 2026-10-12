@@ -1,2 +1,5 @@
 [functions.registrar]
 verify_jwt = false
+
+[functions.publicar]
+verify_jwt = true

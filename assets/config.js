@@ -24,6 +24,8 @@
     // Endereço do site (ex.: https://www.seudominio.com.br). Preencha para gerar sitemap.xml e links canônicos.
     dominio: 'https://brenoproencoadv.netlify.app',
     whatsapp: '5563991106266',
+    // E-mail para pedidos sobre dados pessoais (LGPD) e contato
+    email: 'breno.proensso@gmail.com',
     mensagemWhatsapp: 'Olá, Dr. Breno! Fiz um cálculo no seu site e gostaria de uma análise do meu caso.',
 
     // ---------- Valores do ano ----------

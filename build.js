@@ -13,19 +13,45 @@ const dataISO = d => d instanceof Date ? d.toISOString().slice(0, 10) : String(d
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const dataBR = iso => { const [y, m, d] = iso.split('-'); return `${+d} ${MESES[+m - 1]} ${y}`; };
 const slugify = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// Artigos: vêm do Supabase (tabela "artigos", só os publicados).
+// Sem Supabase configurado, usa os arquivos .md de conteudo/artigos (modo offline).
 const DIR_ART = path.join(__dirname, 'conteudo', 'artigos');
-const ARTIGOS = fs.readdirSync(DIR_ART).filter(f => f.endsWith('.md')).map(f => {
-  const { data: fm, content } = matter(fs.readFileSync(path.join(DIR_ART, f), 'utf8'));
-  if (fm.rascunho) return null;
-  const texto = troca(content);
+function montarArtigo(fm, content, slugBase) {
+  if (fm.rascunho || fm.status === 'rascunho') return null;
+  const texto = troca(content).replace(/</g, '&lt;');
   const palavras = texto.split(/\s+/).filter(Boolean).length;
   const calc = CALC_NOMES[fm.calculadora] ? fm.calculadora : 'simulador-de-aposentadoria';
   return {
-    slug: slugify(f.replace(/\.md$/, '')), titulo: troca(fm.titulo), desc: troca(fm.descricao),
+    slug: slugify(slugBase), titulo: troca(fm.titulo), desc: troca(fm.descricao),
     data: dataISO(fm.data), ordem: fm.ordem || 999, min: fm.minutos || Math.max(2, Math.round(palavras / 200)),
     calc, calcTxt: CALC_NOMES[calc], nota: troca(fm.nota), html: marked.parse(texto), imagem: fm.imagem || ''
   };
-}).filter(Boolean).sort((a, b) => b.data.localeCompare(a.data) || a.ordem - b.ordem);
+}
+async function carregarArtigos() {
+  let lista = null;
+  const url = process.env.SUPABASE_URL || CFG.supabaseUrl, key = process.env.SUPABASE_ANON_KEY || CFG.supabaseAnonKey;
+  if (url && key && !process.env.ARTIGOS_OFFLINE) {
+    const r = await fetch(url.replace(/\/$/, '') + '/rest/v1/artigos?select=slug,titulo,descricao,corpo,calculadora,nota,data,ordem,status&status=eq.publicado', { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+    if (r.status === 404) {
+      console.warn('Tabela de artigos ainda não existe no Supabase; usando os arquivos .md.');
+    } else if (!r.ok) {
+      throw new Error('Não consegui ler os artigos do Supabase (HTTP ' + r.status + '). O site não foi atualizado.');
+    } else {
+      const rows = await r.json();
+      lista = rows.map(a => montarArtigo(a, a.corpo, a.slug));
+      console.log('Artigos do Supabase:', lista.length);
+    }
+  }
+  if (!lista) {
+    lista = fs.readdirSync(DIR_ART).filter(f => f.endsWith('.md')).map(f => {
+      const { data: fm, content } = matter(fs.readFileSync(path.join(DIR_ART, f), 'utf8'));
+      return montarArtigo(fm, content, f.replace(/\.md$/, ''));
+    });
+    console.log('Artigos dos arquivos .md:', lista.length);
+  }
+  return lista.filter(Boolean).sort((a, b) => b.data.localeCompare(a.data) || a.ordem - b.ordem);
+}
+let ARTIGOS = [];
 
 const SM = CFG.salarioMinimo;
 const brl = n => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -302,10 +328,12 @@ function rodape() {
         <a href="sobre.html"><b>Sobre o advogado</b></a>
         <a href="artigos.html"><b>Artigos</b></a>
         <a href="politica-de-privacidade.html">Política de Privacidade</a>
+        <a href="termos-de-uso.html">Termos de Uso</a>
       </div>
       <div>
         <h4>Contato</h4>
         <a href="${wa()}" rel="noopener" target="_blank">Falar no WhatsApp</a>
+        <a href="mailto:${esc(CFG.email)}">${esc(CFG.email)}</a>
         <p style="margin-top:12px">Os cálculos são estimativas informativas, feitas com base na lei e nas tabelas vigentes. Não substituem a análise do seu caso por um advogado nem prometem resultado.</p>
       </div>
     </div>
@@ -362,7 +390,7 @@ ${topo(p.slug)}
             <div class="fld"><label for="ln">Seu nome</label><input type="text" id="ln" name="nome" autocomplete="name" required></div>
             <div class="fld"><label for="lw">WhatsApp com DDD</label><input type="tel" id="lw" name="whatsapp" inputmode="tel" autocomplete="tel" placeholder="(63) 9 0000-0000" required></div>
             <input type="text" name="site" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-            <label class="chk full"><input type="checkbox" name="consent" required><span><b>Autorizo o contato sobre este cálculo</b><small>Autorizo o armazenamento dos meus dados e do cálculo realizado, que pode incluir informações de saúde ou deficiência, para que o advogado Breno Proenço retorne o contato, conforme a <a href="politica-de-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a> e a LGPD.</small></span></label>
+            <label class="chk full"><input type="checkbox" name="consent" required><span><b>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-de-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a></b><small>Autorizo o armazenamento dos meus dados e do cálculo realizado, que pode incluir informações de saúde ou deficiência, para que o advogado Breno Proenço retorne o contato. Posso pedir a exclusão a qualquer momento pelo e-mail ${esc(CFG.email)}.</small></span></label>
             <p class="erro full" id="lead-erro" role="alert"></p>
             <div class="full"><button class="btn" type="submit">Enviar e falar no WhatsApp</button></div>
             <p class="ok-msg full" id="lead-ok">Recebido. Se o WhatsApp não abriu, <a id="lead-link" href="#" target="_blank" rel="noopener">clique aqui</a>.</p>
@@ -547,6 +575,39 @@ ${rodape()}
 `;
 }
 
+function paginaTermos() {
+  const sec = (t, ps) => `<h2>${esc(t)}</h2>` + ps.map(p => Array.isArray(p) ? `<ul>${p.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : `<p>${esc(p)}</p>`).join('');
+  return `${head('Termos de Uso', 'Regras de uso do site, das calculadoras e dos artigos de Breno Proenço, advogado previdenciário.', 'termos-de-uso.html')}
+${topo('')}
+<main id="conteudo">
+  <div class="wrap">
+    <article class="art pol">
+      <p class="crumb"><a href="index.html">Início</a> / Termos de Uso</p>
+      <span class="kicker">Atualizados em ${DATA_POL}</span>
+      <h1>Termos de Uso</h1>
+      <p class="lead">Ao usar este site, você concorda com as regras abaixo. Elas existem para deixar claro o que as calculadoras e os artigos oferecem e o que não oferecem.</p>
+      ${sec('1. Quem mantém o site', [`Este site é mantido por ${M.nome}, advogado, ${M.oab}. Contato: ${CFG.email}.`])}
+      ${sec('2. Caráter informativo', ['As calculadoras e os artigos têm finalidade informativa e educativa. Os resultados são estimativas feitas a partir das informações que você digita e das regras gerais da legislação previdenciária, e podem não refletir a sua situação real.', 'O uso do site não cria relação entre advogado e cliente, não constitui consulta jurídica e não substitui a análise individual dos seus documentos, como o extrato CNIS, a carteira de trabalho e os laudos médicos.'])}
+      ${sec('3. Sem promessa de resultado', ['Nenhum conteúdo deste site promete ou garante a concessão de benefício, prazo ou valor. A decisão sobre qualquer benefício cabe ao INSS ou ao Poder Judiciário, conforme o caso e as provas apresentadas.'])}
+      ${sec('4. Responsabilidade pelo uso', ['Você é responsável pela exatidão das informações que digita. Decisões tomadas apenas com base nos resultados das calculadoras, sem orientação profissional, são de sua responsabilidade. O site pode ficar fora do ar, ter erros ou ser alterado sem aviso prévio.'])}
+      ${sec('5. Atualização das regras e valores', ['A legislação, o salário mínimo, o teto do INSS e as tabelas oficiais mudam com frequência. Procuramos manter tudo atualizado, mas pode haver defasagem entre uma mudança oficial e a atualização do site.'])}
+      ${sec('6. Contato e dados pessoais', ['Ao enviar o formulário de contato, você autoriza o retorno pelo WhatsApp e o armazenamento dos dados informados, nos termos da Política de Privacidade. Você pode pedir a exclusão dos seus dados a qualquer momento pelo e-mail ' + CFG.email + '.'])}
+      ${sec('7. Conteúdo do site', ['Os textos, as calculadoras e o visual do site são de autoria de ' + M.nome + '. Você pode compartilhar os links livremente; a reprodução do conteúdo deve citar a fonte.'])}
+      ${sec('8. Publicidade da advocacia', ['Este site segue as regras de publicidade da advocacia (Provimento 205/2021 do Conselho Federal da OAB): tem caráter informativo, não faz promessa de resultado nem oferece serviços de forma mercantil.'])}
+      ${sec('9. Alterações e legislação aplicável', ['Estes termos podem ser atualizados a qualquer momento, com a data de atualização indicada no topo. Aplica-se a legislação brasileira.'])}
+      <p class="aviso-legal"><b>Veja também:</b> <a href="politica-de-privacidade.html">Política de Privacidade</a>.</p>
+    </article>
+  </div>
+</main>
+${rodape()}
+<script>
+  (function(){var b=document.getElementById('menu-btn'),n=document.getElementById('nav-m');if(!b)return;b.addEventListener('click',function(){var o=n.classList.toggle('open');b.setAttribute('aria-expanded',o)})})();
+</script>
+</body>
+</html>
+`;
+}
+
 function paginaPolitica() {
   const sec = (t, ps) => `<h2>${esc(t)}</h2>` + ps.map(p => Array.isArray(p) ? `<ul>${p.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : `<p>${esc(p)}</p>`).join('');
   return `${head('Política de Privacidade', 'Como este site trata os dados pessoais informados nas calculadoras e no formulário de contato, em conformidade com a LGPD (Lei 13.709/2018).', 'politica-de-privacidade.html')}
@@ -558,7 +619,7 @@ ${topo('')}
       <span class="kicker">Atualizada em ${DATA_POL}</span>
       <h1>Política de Privacidade</h1>
       <p class="lead">Explicamos aqui, em linguagem simples, quais dados este site coleta, para que servem e quais são os seus direitos, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018).</p>
-      ${sec('1. Quem é o responsável', [`O controlador dos dados é ${M.nome}, advogado, ${M.oab}, com atuação em ${M.cidade}. Para falar sobre seus dados, use o WhatsApp ou o Instagram @${M.instagram}, indicados no rodapé do site.`])}
+      ${sec('1. Quem é o responsável', [`O controlador dos dados é ${M.nome}, advogado, ${M.oab}, com atuação em ${M.cidade}. Para qualquer assunto sobre seus dados pessoais, escreva para ${CFG.email}.`])}
       ${sec('2. Quais dados são tratados', [
         'Estatísticas de uso, sem identificar você: páginas visitadas, calculadora utilizada e o resumo do resultado, site de origem (por exemplo, Instagram ou Google), tipo de aparelho (celular ou computador) e um código de sessão aleatório que dura só enquanto a aba estiver aberta. Não usamos cookies para isso.',
         'Os dados digitados nas calculadoras (como data de nascimento, sexo, tempo de contribuição, valores e composição familiar) são usados para montar o cálculo na tela. Eles só são armazenados se você enviar o formulário de contato.',
@@ -570,7 +631,7 @@ ${topo('')}
       ${sec('5. Onde os dados ficam e serviços de terceiros', ['Os dados são armazenados no Supabase, serviço de banco de dados em nuvem, com acesso restrito ao advogado responsável. Ao enviar o formulário, você também é direcionado ao WhatsApp, serviço de terceiro com política de privacidade própria. O site carrega fontes do Google Fonts. Esses fornecedores podem tratar dados técnicos conforme suas próprias políticas, inclusive em servidores fora do Brasil.'])}
       ${sec('6. Sigilo profissional', ['As informações que você compartilhar com o advogado para análise do seu caso são protegidas pelo sigilo profissional previsto no Estatuto da Advocacia e no Código de Ética e Disciplina da OAB.'])}
       ${sec('7. Por quanto tempo guardamos', ['Os dados de contato são guardados pelo tempo necessário para o atendimento. Se não houver prosseguimento, serão eliminados ou anonimizados em até 24 meses, salvo quando a lei exigir a guarda por prazo maior. As estatísticas anônimas podem ser mantidas por mais tempo, pois não identificam ninguém.'])}
-      ${sec('8. Seus direitos', ['Você pode solicitar, a qualquer momento:', ['confirmação de que tratamos seus dados e acesso a eles;', 'correção de dados incompletos ou desatualizados;', 'anonimização, bloqueio ou eliminação de dados desnecessários;', 'informação sobre com quem os dados foram compartilhados;', 'revogação do consentimento e eliminação dos dados tratados com base nele.']])}
+      ${sec('8. Seus direitos e como pedir a exclusão', ['Você pode solicitar, a qualquer momento:', ['confirmação de que tratamos seus dados e acesso a eles;', 'correção de dados incompletos ou desatualizados;', 'anonimização, bloqueio ou eliminação de dados desnecessários;', 'informação sobre com quem os dados foram compartilhados;', 'revogação do consentimento e eliminação dos dados tratados com base nele.'], `Para exercer esses direitos, inclusive pedir que seus dados sejam apagados, envie um e-mail para ${CFG.email} informando seu nome e o número de WhatsApp que usou no site. Responderemos em até 15 dias, e a exclusão é feita de forma definitiva, salvo dados que a lei obrigue a manter.`])}
       ${sec('9. Segurança', ['O banco de dados tem regras de acesso que impedem a leitura pelo público: o site apenas envia informações, e somente o advogado responsável, com login próprio, consegue consultá-las. A conexão é criptografada. Nenhum sistema é totalmente imune a falhas, e por isso pedimos que você não envie documentos ou informações além do necessário.'])}
       ${sec('10. Cookies', ['Este site não usa cookies de publicidade nem de rastreamento. As estatísticas descritas no item 2 usam apenas um código de sessão temporário, que é apagado quando você fecha a aba.'])}
       ${sec('11. Mudanças nesta política', ['Podemos atualizar esta política para refletir mudanças no site ou na lei. A data de atualização aparece no topo da página.'])}
@@ -649,6 +710,8 @@ ${rodape()}
 `;
 }
 
+(async () => {
+ARTIGOS = await carregarArtigos();
 const out = path.join(__dirname, 'dist');
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
@@ -660,11 +723,13 @@ PAGES.forEach(p => fs.writeFileSync(path.join(out, p.slug + '.html'), paginaCalc
 fs.writeFileSync(path.join(out, 'artigos.html'), paginaArtigos());
 fs.writeFileSync(path.join(out, 'sobre.html'), paginaSobre());
 fs.writeFileSync(path.join(out, 'politica-de-privacidade.html'), paginaPolitica());
+fs.writeFileSync(path.join(out, 'termos-de-uso.html'), paginaTermos());
 ARTIGOS.forEach(a => fs.writeFileSync(path.join(out, 'artigo-' + a.slug + '.html'), paginaArtigo(a)));
-const urls = ['index.html', 'sobre.html', 'politica-de-privacidade.html'].concat(PAGES.map(p => p.slug + '.html'), ['artigos.html'], ARTIGOS.map(a => 'artigo-' + a.slug + '.html'));
+const urls = ['index.html', 'sobre.html', 'politica-de-privacidade.html', 'termos-de-uso.html'].concat(PAGES.map(p => p.slug + '.html'), ['artigos.html'], ARTIGOS.map(a => 'artigo-' + a.slug + '.html'));
 if (CFG.dominio) {
   const d = CFG.dominio.replace(/\/$/, '');
   fs.writeFileSync(path.join(out, 'sitemap.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls.map(u => `<url><loc>${d}/${u === 'index.html' ? '' : u}</loc></url>`).join('\n') + '\n</urlset>\n');
   fs.writeFileSync(path.join(out, 'robots.txt'), 'User-agent: *\nAllow: /\nDisallow: /admin/\nSitemap: ' + d + '/sitemap.xml\n');
 }
 console.log('Geradas: index.html +', PAGES.length, 'calculadoras');
+})().catch(e => { console.error(e.message || e); process.exit(1); });

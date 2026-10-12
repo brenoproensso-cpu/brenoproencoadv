@@ -1,0 +1,2 @@
+[functions.registrar]
+verify_jwt = false

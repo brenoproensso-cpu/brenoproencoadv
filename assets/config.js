@@ -22,7 +22,7 @@
     // ---------- Contato ----------
     // TROQUE pelo seu WhatsApp, só números, com 55 + DDD. Ex.: 5563999999999
     // Endereço do site (ex.: https://www.seudominio.com.br). Preencha para gerar sitemap.xml e links canônicos.
-    dominio: '',
+    dominio: 'https://brenoproencoadv.netlify.app',
     whatsapp: '5563991106266',
     mensagemWhatsapp: 'Olá, Dr. Breno! Fiz um cálculo no seu site e gostaria de uma análise do meu caso.',
 

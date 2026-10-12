@@ -68,10 +68,16 @@ function entradas(v: unknown) {
   return r;
 }
 
-async function hashIp(req: Request, SAL: string) {
-  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'sem-ip';
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(SAL + ip));
+async function sha(t: string) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+const ipDe = (req: Request) => (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'sem-ip';
+const hashIp = (req: Request, SAL: string) => sha(SAL + ipDe(req));
+// Visitante único do dia: IP + navegador + data (Brasília) + sal. Muda todo dia; o IP não é guardado.
+async function visitanteDoDia(req: Request, SAL: string) {
+  const dia = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  return (await sha('v|' + SAL + '|' + dia + '|' + ipDe(req) + '|' + (req.headers.get('user-agent') ?? ''))).slice(0, 32);
 }
 
 async function dentroDoLimite(ip: string, tipo: 'lead' | 'evento') {
@@ -124,7 +130,10 @@ Deno.serve(async (req) => {
       consentimento_texto: CONSENT_TEXTO, consentimento_versao: CONSENT_VERSAO,
     }));
   } else {
-    ({ error: erro } = await db.from('eventos').insert({ ...comum, tipo }));
+    const visitante = await visitanteDoDia(req, cfg.sal);
+    ({ error: erro } = await db.from('eventos').insert({ ...comum, tipo, visitante }));
+    // Enquanto a coluna "visitante" não existir no banco, grava sem ela
+    if (erro && /visitante/.test(erro.message)) ({ error: erro } = await db.from('eventos').insert({ ...comum, tipo }));
   }
   if (erro) { console.error(erro.message); return new Response(null, { status: 500, headers: c.headers }); }
   return new Response(null, { status: 204, headers: c.headers });

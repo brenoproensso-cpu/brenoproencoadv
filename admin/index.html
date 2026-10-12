@@ -306,8 +306,9 @@
   }
 
   function kpis(d) {
-    var conv = d.sessoes ? (d.leads / d.sessoes * 100) : 0;
-    var itens = [['Páginas vistas', d.visitas], ['Visitas (sessões)', d.sessoes], ['Cálculos feitos', d.calculos], ['Cliques no WhatsApp', d.whatsapp], ['Leads', d.leads], ['Conversão', conv.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', 'leads por sessão']];
+    var base = d.visitantes || d.sessoes;
+    var conv = base ? (d.leads / base * 100) : 0;
+    var itens = [['Visitantes únicos', d.visitantes != null ? d.visitantes : '-', 'soma dos únicos de cada dia'], ['Páginas vistas', d.visitas], ['Sessões', d.sessoes], ['Cálculos feitos', d.calculos], ['Cliques no WhatsApp', d.whatsapp], ['Leads', d.leads], ['Conversão', conv.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', 'leads por visitante']];
     var k = $('kpis'); k.textContent = '';
     itens.forEach(function (i) { k.appendChild(el('div', { class: 'kpi' }, [el('small', { text: i[0] }), el('b', { text: typeof i[1] === 'number' ? nf.format(i[1]) : i[1] }), i[2] ? el('em', { text: i[2] }) : null])); });
   }
@@ -334,7 +335,7 @@
     dados.forEach(function (x) {
       var b = el('div'); b.style.height = Math.max(1, x.visitas / max * 100) + '%';
       var dt = x.dia.split('-').reverse().slice(0, 2).join('/');
-      var t = dt + ': ' + x.visitas + ' visitas, ' + x.calculos + ' cálculos, ' + x.leads + ' leads';
+      var t = dt + ': ' + (x.visitantes != null ? x.visitantes + ' visitantes, ' : '') + x.visitas + ' páginas, ' + x.calculos + ' cálculos, ' + x.leads + ' leads';
       b.addEventListener('mousemove', function (e) { dica.textContent = t; dica.style.display = 'block'; dica.style.left = Math.min(e.clientX + 12, innerWidth - dica.offsetWidth - 8) + 'px'; dica.style.top = (e.clientY - 34) + 'px'; });
       b.addEventListener('mouseleave', function () { dica.style.display = 'none'; });
       c.appendChild(b);

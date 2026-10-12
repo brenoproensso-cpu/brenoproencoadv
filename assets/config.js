@@ -50,10 +50,10 @@
     // ---------- Banco de dados (Supabase) ----------
     // URL da função "registrar" (grava visitas, cálculos e leads). Vazio = não grava nada.
     // Ex.: https://SEU-PROJETO.supabase.co/functions/v1/registrar
-    registrarUrl: '',
+    registrarUrl: 'https://uoeyjetglhsttflydmop.supabase.co/functions/v1/registrar',
     // Usados só pelo painel de estatísticas (/admin/estatisticas.html).
     // A chave "anon/publishable" é pública por natureza; a proteção vem das regras (RLS) do banco.
-    supabaseUrl: '',
-    supabaseAnonKey: ''
+    supabaseUrl: 'https://uoeyjetglhsttflydmop.supabase.co',
+    supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvZXlqZXRnbGhzdHRmbHlkbW9wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NjM3MTcsImV4cCI6MjEwNzMzOTcxN30.DAh-NFPv_B4hw3xcgja0JD7HrICwJ3oEYRLe6unYUQ0'
   };
 });

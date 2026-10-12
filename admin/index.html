@@ -151,7 +151,7 @@
     <section class="kpis" id="kpis" aria-label="Resumo"></section>
 
     <div class="grade">
-      <section class="cartao"><h2>Visitas por dia</h2><div id="g-dia"></div></section>
+      <section class="cartao"><h2>Páginas vistas por dia</h2><div id="g-dia"></div></section>
       <section class="cartao"><h2>Cálculos por calculadora</h2><div id="g-calc"></div></section>
     </div>
     <div class="grade">
@@ -277,6 +277,7 @@
     var s = await sb.auth.getSession();
     if (!s.data.session) { $('login').hidden = false; $('app').style.display = 'none'; return; }
     $('login').hidden = true; $('sair').hidden = false; $('abas').hidden = false;
+    try { localStorage.setItem('bp_admin', '1'); } catch (e) { } // suas visitas deixam de entrar nas estatísticas
     var ok = await carregar();
     if (ok) $('app').style.display = 'block';
   }
@@ -306,7 +307,7 @@
 
   function kpis(d) {
     var conv = d.sessoes ? (d.leads / d.sessoes * 100) : 0;
-    var itens = [['Visitas', d.visitas], ['Sessões', d.sessoes], ['Cálculos feitos', d.calculos], ['Cliques no WhatsApp', d.whatsapp], ['Leads', d.leads], ['Conversão', conv.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', 'leads por sessão']];
+    var itens = [['Páginas vistas', d.visitas], ['Visitas (sessões)', d.sessoes], ['Cálculos feitos', d.calculos], ['Cliques no WhatsApp', d.whatsapp], ['Leads', d.leads], ['Conversão', conv.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%', 'leads por sessão']];
     var k = $('kpis'); k.textContent = '';
     itens.forEach(function (i) { k.appendChild(el('div', { class: 'kpi' }, [el('small', { text: i[0] }), el('b', { text: typeof i[1] === 'number' ? nf.format(i[1]) : i[1] }), i[2] ? el('em', { text: i[2] }) : null])); });
   }

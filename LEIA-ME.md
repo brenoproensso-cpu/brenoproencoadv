@@ -1,5 +1,7 @@
 # Calculadoras previdenciárias — Breno Proenço
 
+**Hospedagem atual: Cloudflare Pages** (`brenoproencoadv.pages.dev`). Cada envio ao GitHub publica o site sozinho; o botão Publicar do painel usa o *deploy hook* gravado em `ajustes.BUILD_HOOK`. O endereço antigo do Netlify só redireciona para o novo.
+
 Site estático (HTML, CSS e JavaScript puros, sem dependências). Funciona em qualquer hospedagem.
 
 ## Como o site é gerado

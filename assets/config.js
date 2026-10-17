@@ -22,7 +22,7 @@
     // ---------- Contato ----------
     // TROQUE pelo seu WhatsApp, só números, com 55 + DDD. Ex.: 5563999999999
     // Endereço do site (ex.: https://www.seudominio.com.br). Preencha para gerar sitemap.xml e links canônicos.
-    dominio: 'https://brenoproencoadv.netlify.app',
+    dominio: 'https://brenoproencoadv.pages.dev',
     whatsapp: '5563991106266',
     // E-mail para pedidos sobre dados pessoais (LGPD) e contato
     email: 'breno.proensso@gmail.com',

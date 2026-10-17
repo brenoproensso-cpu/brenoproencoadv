@@ -1,6 +1,7 @@
 // Edge Function "publicar": dispara a atualização do site no Netlify.
 // Só funciona para usuário logado que esteja na tabela admins.
-// Configuração: NETLIFY_BUILD_HOOK (segredo da função ou linha na tabela public.ajustes).
+// Configuração: BUILD_HOOK (endereço do deploy hook da hospedagem: Cloudflare Pages ou Netlify),
+// como segredo da função ou linha na tabela public.ajustes. NETLIFY_BUILD_HOOK é aceito como nome antigo.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const servico = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
@@ -40,9 +41,9 @@ Deno.serve(async (req) => {
   const { data: admin, error } = await sb.rpc('is_admin');
   if (error || admin !== true) return new Response(JSON.stringify({ erro: 'acesso negado' }), { status: 403, headers: h });
 
-  const hook = await ajuste('NETLIFY_BUILD_HOOK');
-  if (!hook) return new Response(JSON.stringify({ erro: 'NETLIFY_BUILD_HOOK não configurado' }), { status: 500, headers: h });
+  const hook = (await ajuste('BUILD_HOOK')) || (await ajuste('NETLIFY_BUILD_HOOK'));
+  if (!hook) return new Response(JSON.stringify({ erro: 'BUILD_HOOK não configurado' }), { status: 500, headers: h });
   const r = await fetch(hook, { method: 'POST', body: '{}' });
-  if (!r.ok) return new Response(JSON.stringify({ erro: 'Netlify respondeu ' + r.status }), { status: 502, headers: h });
+  if (!r.ok) return new Response(JSON.stringify({ erro: 'A hospedagem respondeu ' + r.status }), { status: 502, headers: h });
   return new Response(JSON.stringify({ ok: true }), { status: 200, headers: h });
 });

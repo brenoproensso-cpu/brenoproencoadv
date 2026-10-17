@@ -557,7 +557,7 @@
   async function atualizarSite(idAviso) {
     aviso(idAviso, 'Atualizando o site…');
     var r = await sb.functions.invoke('publicar', { body: {} });
-    if (r.error) { aviso(idAviso, 'Salvo, mas o site não foi atualizado: confira o NETLIFY_BUILD_HOOK no Supabase.', 'erro'); return false; }
+    if (r.error) { aviso(idAviso, 'Salvo, mas o site não foi atualizado: confira o BUILD_HOOK na tabela ajustes do Supabase.', 'erro'); return false; }
     aviso(idAviso, 'Pronto! O site é atualizado em cerca de 1 minuto.', 'ok'); return true;
   }
   $('a-salvar').addEventListener('click', async function () {
